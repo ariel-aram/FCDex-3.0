@@ -84,11 +84,7 @@ class ActiveBattle:
             _active_battles.remove(self)
 
         if interaction.message:
-            await interaction.message.edit(
-                content=f"{self.author.mention} vs {self.opponent.mention} — **{self.instance.winner} wins!**",
-                view=result_layout,
-                attachments=[battle_log_file(log_lines)],
-            )
+            await interaction.message.edit(view=result_layout, attachments=[battle_log_file(log_lines)])
 
     async def cancel(self, interaction: discord.Interaction):
         if not self.involves(interaction.user):
@@ -99,7 +95,8 @@ class ActiveBattle:
             _active_battles.remove(self)
 
         await interaction.response.edit_message(
-            content=f"Battle cancelled by {interaction.user.mention}.", view=BattleLayoutView(self), attachments=[]
+            view=BattleLayoutView(self, banner=f"Battle cancelled by {interaction.user.mention}."),
+            attachments=[],
         )
 
 
@@ -150,8 +147,10 @@ class BattleCog(commands.GroupCog, group_name="battle"):
         _active_battles.append(battle)
 
         await interaction.response.send_message(
-            f"Hey {opponent.mention}, {author.mention} wants to battle!",
-            view=BattleLayoutView(battle),  # pyright: ignore[reportArgumentType]
+            view=BattleLayoutView(
+                battle,
+                banner=f"Hey {opponent.mention}, {author.mention} wants to battle!",
+            ),  # pyright: ignore[reportArgumentType]
         )
 
     async def _fill_deck(self, interaction: discord.Interaction, *, mode: str):

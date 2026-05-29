@@ -37,9 +37,10 @@ class BattleControls(ActionRow):
 
 
 class BattleLayoutView(LayoutView):
-    def __init__(self, battle: ActiveBattle):
+    def __init__(self, battle: ActiveBattle, *, banner: str | None = None):
         super().__init__(timeout=None)
         self.battle = battle
+        self.banner = banner
         self._build()
 
     def _build(self):
@@ -51,14 +52,15 @@ class BattleLayoutView(LayoutView):
         author_ready = "✅" if battle.author_ready else "⏳"
         opponent_ready = "✅" if battle.opponent_ready else "⏳"
 
-        container.add_item(
-            TextDisplay(
-                f"# ⚔️ {settings.plural_collectible_name.title()} Battle\n"
-                f"{battle.author.mention} vs {battle.opponent.mention}\n\n"
-                f"Use `/battle all` or `/battle best` to fill your deck, "
-                f"then press **Ready** when done."
-            )
+        header = (
+            f"{self.banner}\n\n" if self.banner else ""
+        ) + (
+            f"# ⚔️ {settings.plural_collectible_name.title()} Battle\n"
+            f"{battle.author.mention} vs {battle.opponent.mention}\n\n"
+            f"Use `/battle all` or `/battle best` to fill your deck, "
+            f"then press **Ready** when done."
         )
+        container.add_item(TextDisplay(header))
         container.add_item(Separator())
         container.add_item(
             TextDisplay(f"### {author_ready} {battle.author.display_name}\n{format_deck(battle.instance.p1_balls)}")
@@ -79,7 +81,7 @@ def build_battle_result_layout(battle: ActiveBattle, log_lines: list[str]) -> La
     container.add_item(
         TextDisplay(
             f"# 🏆 Battle Complete\n"
-            f"**Winner:** {winner}\n"
+            f"{battle.author.mention} vs {battle.opponent.mention} — **{winner} wins!**\n"
             f"**Turns:** {battle.instance.turns}\n\n"
             f"### {battle.author.display_name}\n{format_deck(battle.instance.p1_balls)}\n\n"
             f"### {battle.opponent.display_name}\n{format_deck(battle.instance.p2_balls)}"

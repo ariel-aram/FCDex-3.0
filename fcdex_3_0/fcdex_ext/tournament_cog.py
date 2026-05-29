@@ -108,12 +108,13 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
 
     @app_commands.command(name="info", description="Show tournament details")
     async def info(self, interaction: discord.Interaction, tournament: TournamentTransform):
+        host_discord_id = await Player.objects.values_list("discord_id", flat=True).aget(pk=tournament.host_id)
         legacy_count = await tournament.registrations.filter(group=TournamentGroup.LEGACY).acount()
         main_count = await tournament.registrations.filter(group=TournamentGroup.MAIN).acount()
 
         sections = [
             f"**Status:** {tournament.get_status_display()}\n"
-            f"**Host:** <@{tournament.host.discord_id}>\n"
+            f"**Host:** <@{host_discord_id}>\n"
             f"**Legacy group:** {legacy_count} players\n"
             f"**Main group:** {main_count} players\n"
             f"**Semifinal cutoff:** {tournament.semifinal_cutoff} pts",
