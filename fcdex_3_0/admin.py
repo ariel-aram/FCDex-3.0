@@ -37,6 +37,7 @@ class TournamentAdmin(admin.ModelAdmin):
     autocomplete_fields = ("host",)
     list_display = ("name", "status", "host", "semifinal_cutoff", "created_at")
     list_filter = ("status",)
+    search_fields = ("name", "description")
 
 
 @admin.register(TournamentRegistration)
