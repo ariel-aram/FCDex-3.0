@@ -9,13 +9,14 @@ from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, but
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
 from fcdex_3_0.fcdex_ext.services import increment_stat
+from fcdex_3_0.fcdex_ext.tournament_match_views import build_bracket_sections
 from fcdex_3_0.fcdex_ext.tournament_schedule import (
     registration_closed_reason,
     registration_is_open,
     schedule_summary_lines,
 )
 from fcdex_3_0.fcdex_ext.views import truncate_text
-from fcdex_3_0.models import Tournament, TournamentGroup, TournamentRegistration, TournamentRound
+from fcdex_3_0.models import Tournament, TournamentGroup, TournamentRegistration
 
 if TYPE_CHECKING:
     from discord import Interaction
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 log = logging.getLogger("fcdex_3_0.tournament.player_views")
 
 
-async def build_overview_sections(tournament: Tournament) -> list[str]:
+async def build_overview_sections(tournament: Tournament, viewer_id: int | None = None) -> list[str]:
     host_discord_id = await Player.objects.values_list("discord_id", flat=True).aget(pk=tournament.host_id)
     legacy_count = await tournament.registrations.filter(group=TournamentGroup.LEGACY).acount()
     main_count = await tournament.registrations.filter(group=TournamentGroup.MAIN).acount()
@@ -33,14 +34,26 @@ async def build_overview_sections(tournament: Tournament) -> list[str]:
         if registration_is_open(tournament)
         else (registration_closed_reason(tournament) or "🔴 Registration closed")
     )
+
+    your_group = ""
+    if viewer_id:
+        try:
+            reg = await tournament.registrations.select_related("player").aget(player__discord_id=viewer_id)
+            your_group = f"\n**Your group** · **{reg.get_group_display()}** · `{reg.score}` pts"
+        except TournamentRegistration.DoesNotExist:
+            your_group = "\n**Your group** · *Not registered — join from this hub*"
+
     return [
         f"**Status** · {tournament.get_status_display()}\n"
         f"**Host** · <@{host_discord_id}>\n"
         f"**Registration** · {registration_note}\n"
         f"**Legacy** · {legacy_count} players · **Main** · {main_count} players\n"
-        f"**Semifinal cutoff** · `{tournament.semifinal_cutoff}` pts"
+        f"**Semifinal cutoff** · `{tournament.semifinal_cutoff}` pts\n"
+        f"**Match win reward** · `{tournament.match_win_reward:,}` coins"
+        + your_group
         + ("\n" + "\n".join(schedule_lines) if schedule_lines else ""),
         tournament.description or "*No description provided.*",
+        "-# Use **Bracket** for pairings · `/tournament match` to claim wins and earn rewards",
     ]
 
 
@@ -54,23 +67,9 @@ async def build_standings_sections(tournament: Tournament) -> list[str]:
         rank = 1
         async for reg in queryset:
             flag = "❌" if reg.eliminated else ("⚠️" if not reg.semifinal_eligible else "✅")
-            lines.append(f"`{rank}.` <@{reg.player.discord_id}> · **{reg.score}** pts {flag}")
+            lines.append(f"`{rank}.` <@{reg.player.discord_id}> · **{reg.score}** pts · **{group.label}** {flag}")
             rank += 1
         sections.append(f"### {group.label} group\n" + ("\n".join(lines) if lines else "*No players yet*"))
-    return sections
-
-
-async def build_bracket_sections(tournament: Tournament) -> list[str]:
-    sections: list[str] = []
-    for round_label, round_value in TournamentRound.choices:
-        lines: list[str] = []
-        async for match in tournament.matches.filter(round=round_value).select_related("player1", "player2", "winner"):
-            p2 = f"<@{match.player2.discord_id}>" if match.player2 else "BYE"
-            status = (
-                f"🏆 <@{match.winner.discord_id}>" if match.winner else ("✅ Done" if match.completed else "⏳ Pending")
-            )
-            lines.append(f"<@{match.player1.discord_id}> **vs** {p2}\n-# {status} · `{match.score1}`–`{match.score2}`")
-        sections.append(f"### {round_label}\n" + ("\n".join(lines) if lines else "*No matches yet*"))
     return sections
 
 
@@ -90,7 +89,7 @@ class TournamentJoinSelect(discord.ui.Select):
 
     async def callback(self, interaction: Interaction) -> None:
         if interaction.user.id != self.owner_id:
-            await interaction.response.send_message("This menu is private to you.", ephemeral=True)
+            await interaction.response.send_message("This menu is for the player who opened it.", ephemeral=True)
             return
 
         tournament = await Tournament.objects.aget(pk=self.tournament_id)
@@ -143,7 +142,7 @@ class TournamentPlayerTabControls(ActionRow):
 
     async def _switch(self, interaction: Interaction, mode: str) -> None:
         if interaction.user.id != self.owner_id:
-            await interaction.response.send_message("This menu is private to you.", ephemeral=True)
+            await interaction.response.send_message("This menu is for the player who opened it.", ephemeral=True)
             return
         layout = await build_tournament_player_menu(self.owner_id, self.tournament_id, mode=mode)
         await interaction.response.edit_message(view=layout)
@@ -162,7 +161,7 @@ async def build_tournament_player_menu(
         subtitle = f"{notice}\n{subtitle}"
 
     if mode == "overview":
-        sections = await build_overview_sections(tournament)
+        sections = await build_overview_sections(tournament, viewer_id=owner_id)
     elif mode == "standings":
         sections = await build_standings_sections(tournament)
     else:

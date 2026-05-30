@@ -23,7 +23,8 @@ Legacy & Main group tournaments with registration, group stage scoring, semifina
 | ------- | ----------- |
 | `/tournament manage` | Ephemeral admin hub — create, edit, host, delete, announce |
 | `/tournament view` | Player hub — overview, standings, bracket, join |
-| `/tournament score` | Report match points |
+| `/tournament match` | Pending matches — claim victory for coins + points |
+| `/tournament score` | Report match points (optional manual adjustment) |
 
 ### 🏅 Achievements
 
@@ -31,7 +32,7 @@ Player achievements with progress tracking and claimable rewards (coins / clubba
 
 | Command | Description |
 | ------- | ----------- |
-| `/achievement menu` | Ephemeral hub — catalog, progress, claim |
+| `/achievement menu` | Hub — catalog, progress, claim |
 
 Configure achievements in the **admin panel** under FCDex 3.0.
 
@@ -53,7 +54,7 @@ Add to `config/extra.toml` in your BallsDex directory:
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.2.1"
+location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.3.0"
 path = "fcdex_3_0"
 enabled = true
 ```

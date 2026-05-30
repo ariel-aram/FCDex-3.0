@@ -42,13 +42,14 @@ class TournamentAdmin(admin.ModelAdmin):
         "scheduled_start_at",
         "scheduled_end_at",
         "semifinal_cutoff",
+        "match_win_reward",
         "created_at",
     )
     list_filter = ("status",)
     search_fields = ("name", "description")
     readonly_fields = ("created_at",)
     fieldsets = (
-        (None, {"fields": ("name", "description", "host", "status", "semifinal_cutoff")}),
+        (None, {"fields": ("name", "description", "host", "status", "semifinal_cutoff", "match_win_reward")}),
         (
             "Schedule",
             {
@@ -72,7 +73,7 @@ class TournamentRegistrationAdmin(admin.ModelAdmin):
 @admin.register(TournamentMatch)
 class TournamentMatchAdmin(admin.ModelAdmin):
     autocomplete_fields = ("tournament", "player1", "player2", "winner")
-    list_display = ("tournament", "round", "group", "player1", "player2", "winner", "completed")
+    list_display = ("tournament", "round", "group", "player1", "player2", "winner", "completed", "reward_claimed")
     list_filter = ("round", "group", "completed", "tournament")
 
 

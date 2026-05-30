@@ -70,7 +70,6 @@ class MergeCog(commands.GroupCog, group_name="merge"):
             f"into a **random** {settings.collectible_name}?\n"
             f"-# Both cards will be consumed.",
             view=view,
-            ephemeral=True,
         )
         await view.wait()
         if view.value is not True:

@@ -446,9 +446,10 @@ async def post_tournament_announcement(interaction: Interaction, tournament: Tou
         f"**Status:** {tournament.get_status_display()}\n"
         f"**Host:** <@{host_discord_id}>\n"
         f"**Semifinal cutoff:** {tournament.semifinal_cutoff} points\n"
+        f"**Match win reward:** {tournament.match_win_reward:,} coins\n"
         + ("\n".join(schedule_lines) + "\n" if schedule_lines else "")
         + f"\n{tournament.description or 'No description provided.'}\n\n"
-        f"-# Join with `/tournament view` · Legacy or Main group"
+        f"-# `/tournament view` to join · `/tournament match` to claim wins"
     ]
     layout = build_tournament_layout(f"🏟️ {tournament.name}", sections)
     await channel.send(view=layout)  # pyright: ignore[reportArgumentType]

@@ -93,6 +93,9 @@ class Tournament(models.Model):
     semifinal_cutoff = models.PositiveIntegerField(
         default=0, help_text="Minimum group score required to reach semifinals. Lowest scorers are eliminated."
     )
+    match_win_reward = models.PositiveIntegerField(
+        default=500, help_text="Coins awarded when a player claims a tournament match victory."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     scheduled_start_at = models.DateTimeField(
         null=True,
@@ -146,6 +149,7 @@ class TournamentMatch(models.Model):
     score1 = models.IntegerField(default=0)
     score2 = models.IntegerField(default=0)
     completed = models.BooleanField(default=False)
+    reward_claimed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

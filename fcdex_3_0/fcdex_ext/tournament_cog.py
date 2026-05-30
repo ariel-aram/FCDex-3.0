@@ -13,6 +13,7 @@ from django.utils import timezone
 from ballsdex.core.utils.transformers import TTLModelTransformer
 from bd_models.models import Player
 from fcdex_3_0.fcdex_ext.services import increment_stat
+from fcdex_3_0.fcdex_ext.tournament_match_views import build_tournament_match_menu
 from fcdex_3_0.fcdex_ext.tournament_player_views import build_tournament_player_menu
 from fcdex_3_0.fcdex_ext.tournament_schedule import past_end_reason, start_blocked_reason
 from fcdex_3_0.fcdex_ext.tournament_views import TournamentManageView
@@ -61,7 +62,20 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
     @app_commands.command(name="view", description="Tournament hub — overview, standings, bracket, and join")
     async def view(self, interaction: discord.Interaction, tournament: TournamentTransform):
         layout = await build_tournament_player_menu(interaction.user.id, tournament.pk, mode="overview")
-        await interaction.response.send_message(view=layout, ephemeral=True)  # pyright: ignore[reportArgumentType]
+        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
+
+    @app_commands.command(name="match", description="View pending matches and claim victory rewards")
+    async def match(self, interaction: discord.Interaction, tournament: TournamentTransform):
+        player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
+        try:
+            await TournamentRegistration.objects.aget(tournament=tournament, player=player)
+        except TournamentRegistration.DoesNotExist:
+            await interaction.response.send_message(
+                "You must join this tournament first — use `/tournament view`.", ephemeral=True
+            )
+            return
+        layout = await build_tournament_match_menu(interaction.user.id, tournament.pk)
+        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
 
     @app_commands.command(name="score", description="Report your match score (group stage)")
     async def score(
@@ -95,8 +109,7 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         await interaction.response.send_message(
             f"Score updated! You're now at **{registration.score}** points in the "
             f"**{registration.get_group_display()}** group."
-            + ("" if registration.semifinal_eligible else "\n-# ⚠️ Below semifinal cutoff."),
-            ephemeral=True,
+            + ("" if registration.semifinal_eligible else "\n-# ⚠️ Below semifinal cutoff.")
         )
 
 

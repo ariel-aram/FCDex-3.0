@@ -39,4 +39,4 @@ class AchievementCog(commands.GroupCog, group_name="achievement"):
     async def menu(self, interaction: discord.Interaction, user: discord.User | None = None):
         target = user or interaction.user
         layout = await build_achievement_menu(interaction.user.id, mode="catalog", target=target)
-        await interaction.response.send_message(view=layout, ephemeral=True)  # pyright: ignore[reportArgumentType]
+        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
