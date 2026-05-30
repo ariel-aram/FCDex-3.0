@@ -28,7 +28,7 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "### 🏟️ Tournaments\n"
                 "`/tournament view` — hub, join, standings, bracket\n"
                 "`/tournament match` — battles, bounties, verified wins\n"
-                "`/tournament bet` · `/tournament rules`\n"
+                "`/tournament bet` — wager on match outcomes\n"
                 "`/tournament manage` — admin panel (Manage Server)",
                 "### ✨ Merge\n`/merge` — pick two cards, confirm, receive a **FCDex Merge** special",
                 "### 🏅 Achievements\n`/achievement menu` — catalog, progress, claim rewards",

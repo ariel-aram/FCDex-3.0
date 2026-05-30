@@ -97,7 +97,7 @@ class Tournament(models.Model):
         default=500, help_text="Fallback coins when no bounty pool is configured on the match."
     )
     rules = models.TextField(
-        blank=True, default="", help_text="Tournament rules shown in /tournament view and /tournament rules."
+        blank=True, default="", help_text="Tournament rules shown in /tournament view overview."
     )
     betting_enabled = models.BooleanField(default=True)
     min_bet = models.PositiveIntegerField(default=100)

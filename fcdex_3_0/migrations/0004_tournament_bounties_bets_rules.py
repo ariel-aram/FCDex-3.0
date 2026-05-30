@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             model_name="tournament",
             name="rules",
             field=models.TextField(
-                blank=True, default="", help_text="Tournament rules shown in /tournament view and /tournament rules."
+                blank=True, default="", help_text="Tournament rules shown in /tournament view overview."
             ),
         ),
         migrations.AlterField(

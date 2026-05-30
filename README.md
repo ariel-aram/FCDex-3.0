@@ -26,10 +26,9 @@ Registration stays open until the host **starts group stage** in `/tournament ma
 | Command | Description |
 | ------- | ----------- |
 | `/tournament manage` | Ephemeral admin hub — create, edit, host, bounty vault, delete, announce |
-| `/tournament view` | Player hub — overview, standings, bracket, join |
+| `/tournament view` | Player hub — overview (rules & betting), standings, bracket, join |
 | `/tournament match` | Pending matches — **Start battle**, verify win, claim bounties |
 | `/tournament bet` | Wager coins on a match participant |
-| `/tournament rules` | Read tournament rules and betting info |
 
 Use `/fcdex menu` for a single hub listing every FCDex command group.
 
@@ -64,7 +63,7 @@ Add to `config/extra.toml` in your BallsDex directory:
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.6.2"
+location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.6.3"
 path = "fcdex_3_0"
 enabled = true
 ```

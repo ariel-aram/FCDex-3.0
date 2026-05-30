@@ -65,7 +65,7 @@ async def build_overview_sections(tournament: Tournament, viewer_id: int | None 
         + ("\n" + "\n".join(schedule_lines) if schedule_lines else ""),
         rules_text,
         tournament.description or "*No description provided.*",
-        "-# **Bracket** tab · `/tournament match` (**Start battle**) · `/tournament bet` · `/tournament rules`",
+        "-# **Bracket** tab · `/tournament match` (**Start battle**) · `/tournament bet`",
     ]
 
 
@@ -163,7 +163,9 @@ class TournamentPlayerTabControls(ActionRow):
 async def viewer_can_join(tournament: Tournament, viewer_id: int) -> bool:
     if not registration_is_open(tournament):
         return False
-    return not await tournament.registrations.filter(player__discord_id=viewer_id).aexists()
+    return not await TournamentRegistration.objects.filter(
+        tournament=tournament, player__discord_id=viewer_id
+    ).aexists()
 
 
 async def build_tournament_player_menu(

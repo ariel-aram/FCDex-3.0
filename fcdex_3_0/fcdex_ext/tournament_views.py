@@ -470,7 +470,7 @@ async def post_tournament_announcement(interaction: Interaction, tournament: Tou
         f"**Betting:** {'enabled' if tournament.betting_enabled else 'disabled'}\n"
         + ("\n".join(schedule_lines) + "\n" if schedule_lines else "")
         + f"\n{tournament.description or 'No description provided.'}\n\n"
-        f"-# `/tournament view` · `/tournament match` · `/tournament bet` · `/tournament rules`"
+        f"-# `/tournament view` · `/tournament match` · `/tournament bet`"
     ]
     layout = build_tournament_layout(f"🏟️ {tournament.name}", sections)
     await channel.send(view=layout)  # pyright: ignore[reportArgumentType]

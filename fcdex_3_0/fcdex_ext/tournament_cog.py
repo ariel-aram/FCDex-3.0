@@ -18,7 +18,6 @@ from fcdex_3_0.fcdex_ext.tournament_match_views import build_tournament_match_me
 from fcdex_3_0.fcdex_ext.tournament_player_views import build_tournament_player_menu
 from fcdex_3_0.fcdex_ext.tournament_schedule import past_end_reason, start_blocked_reason
 from fcdex_3_0.fcdex_ext.tournament_views import TournamentManageView
-from fcdex_3_0.fcdex_ext.views import build_tournament_layout
 from fcdex_3_0.models import (
     Tournament,
     TournamentGroup,
@@ -79,23 +78,6 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
             )
             return
         layout = await build_tournament_match_menu(interaction.user.id, tournament.pk)
-        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
-
-    @app_commands.command(name="rules", description="Read tournament rules and betting info")
-    async def rules(self, interaction: discord.Interaction, tournament: TournamentTransform):
-        betting = (
-            f"🎲 Betting **on** · `{tournament.min_bet:,}`–`{tournament.max_bet:,}` coins · "
-            f"**{tournament.bet_payout_multiplier}x** payout"
-            if tournament.betting_enabled
-            else "🎲 Betting **off** for this event"
-        )
-        no_rules = "*No rules posted yet — admins can configure them in `/tournament manage` → **Bounty vault**.*"
-        sections = [
-            betting,
-            tournament.rules or no_rules,
-            "-# `/tournament bet` to wager · `/tournament match` to claim bounties after wins",
-        ]
-        layout = build_tournament_layout(f"📜 {tournament.name} · Rules", sections)
         await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
 
     @app_commands.command(name="bet", description="Wager coins on who wins a tournament match")
