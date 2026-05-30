@@ -58,6 +58,13 @@ def achievement_is_complete(player_achievement: PlayerAchievement, achievement: 
     return player_achievement.progress >= achievement.required_count
 
 
+def format_achievement_progress(player_achievement: PlayerAchievement, achievement: Achievement) -> str:
+    if player_achievement.claimed_at:
+        return f"{achievement.required_count}/{achievement.required_count}"
+    shown = min(player_achievement.progress, achievement.required_count)
+    return f"{shown}/{achievement.required_count}"
+
+
 async def claim_achievement(player: Player, achievement: Achievement) -> tuple[bool, str]:
     try:
         player_achievement = await PlayerAchievement.objects.select_related("achievement").aget(
@@ -68,7 +75,7 @@ async def claim_achievement(player: Player, achievement: Achievement) -> tuple[b
 
     if not player_achievement.unlocked_at or not achievement_is_complete(player_achievement, achievement):
         return False, (
-            f"This achievement is not complete yet ({player_achievement.progress}/{achievement.required_count})."
+            f"This achievement is not complete yet ({format_achievement_progress(player_achievement, achievement)})."
         )
 
     if player_achievement.claimed_at:

@@ -6,7 +6,9 @@ from .models import (
     PlayerAchievement,
     PlayerStats,
     Tournament,
+    TournamentBet,
     TournamentMatch,
+    TournamentMatchPrize,
     TournamentRegistration,
 )
 
@@ -39,17 +41,19 @@ class TournamentAdmin(admin.ModelAdmin):
         "name",
         "status",
         "host",
+        "betting_enabled",
         "scheduled_start_at",
         "scheduled_end_at",
         "semifinal_cutoff",
         "match_win_reward",
         "created_at",
     )
-    list_filter = ("status",)
-    search_fields = ("name", "description")
+    list_filter = ("status", "betting_enabled")
+    search_fields = ("name", "description", "rules")
     readonly_fields = ("created_at",)
     fieldsets = (
-        (None, {"fields": ("name", "description", "host", "status", "semifinal_cutoff", "match_win_reward")}),
+        (None, {"fields": ("name", "description", "rules", "host", "status", "semifinal_cutoff", "match_win_reward")}),
+        ("Betting", {"fields": ("betting_enabled", "min_bet", "max_bet", "bet_payout_multiplier")}),
         (
             "Schedule",
             {
@@ -72,9 +76,33 @@ class TournamentRegistrationAdmin(admin.ModelAdmin):
 
 @admin.register(TournamentMatch)
 class TournamentMatchAdmin(admin.ModelAdmin):
-    autocomplete_fields = ("tournament", "player1", "player2", "winner")
-    list_display = ("tournament", "round", "group", "player1", "player2", "winner", "completed", "reward_claimed")
+    autocomplete_fields = ("tournament", "player1", "player2", "winner", "verified_winner")
+    list_display = (
+        "tournament",
+        "round",
+        "group",
+        "player1",
+        "player2",
+        "winner",
+        "completed",
+        "verified_winner",
+        "reward_claimed",
+    )
     list_filter = ("round", "group", "completed", "tournament")
+
+
+@admin.register(TournamentMatchPrize)
+class TournamentMatchPrizeAdmin(admin.ModelAdmin):
+    autocomplete_fields = ("tournament", "match", "ball")
+    list_display = ("tournament", "match", "round", "group", "prize_type", "coins", "label", "weight")
+    list_filter = ("prize_type", "round", "group", "tournament")
+
+
+@admin.register(TournamentBet)
+class TournamentBetAdmin(admin.ModelAdmin):
+    autocomplete_fields = ("tournament", "match", "bettor", "picked")
+    list_display = ("tournament", "match", "bettor", "picked", "amount", "payout", "resolved", "created_at")
+    list_filter = ("resolved", "tournament")
 
 
 @admin.register(MergeLog)

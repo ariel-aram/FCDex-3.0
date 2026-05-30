@@ -17,14 +17,18 @@ Lineup buttons on the match panel: **Random**, **Strongest**, **Clear**, **Lock 
 
 ### 🏟️ Tournaments
 
-Legacy & Main group tournaments with registration, group stage scoring, semifinals, and finals.
+Legacy & Main group tournaments with battle-verified matches, bounties, betting, and bracket progression.
+
+Points are earned only from verified match wins (**+3** each). Hosts advance rounds once all bracket matches are complete.
 
 | Command | Description |
 | ------- | ----------- |
 | `/tournament manage` | Ephemeral admin hub — create, edit, host, delete, announce |
+| `/tournament bounty` | Ephemeral admin vault — drop/stash loot, rules, betting |
 | `/tournament view` | Player hub — overview, standings, bracket, join |
-| `/tournament match` | Pending matches — claim victory for coins + points |
-| `/tournament score` | Report match points (optional manual adjustment) |
+| `/tournament match` | Pending matches — **Start battle**, verify win, claim bounties |
+| `/tournament bet` | Wager coins on a match participant |
+| `/tournament rules` | Read tournament rules and betting info |
 
 ### 🏅 Achievements
 
@@ -54,7 +58,7 @@ Add to `config/extra.toml` in your BallsDex directory:
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.3.0"
+location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.5.0"
 path = "fcdex_3_0"
 enabled = true
 ```

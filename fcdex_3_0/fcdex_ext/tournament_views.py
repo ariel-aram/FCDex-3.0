@@ -69,6 +69,7 @@ class TournamentManageView(LayoutView):
             "▸ **Create** — full tournament setup\n"
             "▸ **Edit** — description, schedule, cutoff, status\n"
             "▸ **Host** — start group stage or advance rounds\n"
+            "▸ **Bounty** — loot pools, rules, and betting (`/tournament bounty`)\n"
             "▸ **Delete** — permanently remove a tournament\n"
             "▸ **Announce** — public signup post in this channel"
         )
@@ -77,6 +78,7 @@ class TournamentManageView(LayoutView):
         container.add_item(TextDisplay(truncate_text(body)))
         container.add_item(Separator())
         container.add_item(TournamentManageControls(self.owner_id))
+        container.add_item(TournamentManageExtraRow(self.owner_id))
         self.add_item(container)
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -144,6 +146,25 @@ class TournamentManageControls(ActionRow):
             await interaction.response.send_message("No active tournaments to announce.", ephemeral=True)
             return
         view = TournamentPickView(self.owner_id, cast(ManageMode, "announce"), tournaments)
+        await interaction.response.edit_message(view=view)
+
+
+class TournamentManageExtraRow(ActionRow):
+    def __init__(self, owner_id: int):
+        super().__init__()
+        self.owner_id = owner_id
+
+    @button(label="Bounty vault", style=discord.ButtonStyle.secondary, emoji="🎁")
+    async def bounty_button(self, interaction: Interaction, button: Button):
+        if _owner_mismatch(interaction, self.owner_id):
+            await _deny_owner(interaction)
+            return
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
+            return
+        from fcdex_3_0.fcdex_ext.tournament_bounty_views import build_bounty_pick_view
+
+        view = await build_bounty_pick_view(self.owner_id, back_to_manage=True)
         await interaction.response.edit_message(view=view)
 
 
@@ -446,10 +467,10 @@ async def post_tournament_announcement(interaction: Interaction, tournament: Tou
         f"**Status:** {tournament.get_status_display()}\n"
         f"**Host:** <@{host_discord_id}>\n"
         f"**Semifinal cutoff:** {tournament.semifinal_cutoff} points\n"
-        f"**Match win reward:** {tournament.match_win_reward:,} coins\n"
+        f"**Betting:** {'enabled' if tournament.betting_enabled else 'disabled'}\n"
         + ("\n".join(schedule_lines) + "\n" if schedule_lines else "")
         + f"\n{tournament.description or 'No description provided.'}\n\n"
-        f"-# `/tournament view` to join · `/tournament match` to claim wins"
+        f"-# `/tournament view` · `/tournament match` · `/tournament bet` · `/tournament rules`"
     ]
     layout = build_tournament_layout(f"🏟️ {tournament.name}", sections)
     await channel.send(view=layout)  # pyright: ignore[reportArgumentType]

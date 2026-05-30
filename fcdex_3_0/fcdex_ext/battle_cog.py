@@ -31,6 +31,7 @@ class ActiveBattle:
     author: discord.Member
     opponent: discord.Member
     bot: BallsDexBot
+    tournament_match_id: int | None = None
     instance: BattleInstance = field(default_factory=BattleInstance)
     author_ready: bool = False
     opponent_ready: bool = False
@@ -128,6 +129,21 @@ class ActiveBattle:
             await increment_stat(winner_player, "battles_won")
             await increment_stat(winner_player, "battles_played")
             await increment_stat(loser_player, "battles_played")
+
+            if self.tournament_match_id is not None:
+                from fcdex_3_0.fcdex_ext.tournament_battle import apply_verified_battle_result
+
+                guild_id = interaction.guild_id if interaction.guild else None
+                ok, tournament_message = await apply_verified_battle_result(
+                    self.tournament_match_id, winner_player, guild_id=guild_id
+                )
+                if ok and interaction.channel:
+                    await interaction.channel.send(f"🏟️ {winner_member.mention} {tournament_message}")
+                elif not ok and interaction.channel:
+                    await interaction.channel.send(
+                        f"-# Tournament match **#{self.tournament_match_id}** "
+                        f"could not be recorded: {tournament_message}"
+                    )
 
         if interaction.message:
             await interaction.message.edit(view=result_layout, attachments=[battle_log_file(log_lines)])

@@ -12,6 +12,7 @@ from fcdex_3_0.fcdex_ext.services import (
     achievement_is_complete,
     check_achievements,
     claim_achievement,
+    format_achievement_progress,
     get_or_create_stats,
 )
 from fcdex_3_0.fcdex_ext.views import truncate_text
@@ -51,7 +52,9 @@ async def build_progress_body(target: discord.User | discord.Member) -> tuple[st
             if player_achievement.claimed_at
             else ("🎉 Ready" if achievement_is_complete(player_achievement, ach) else "⏳ In progress")
         )
-        lines.append(f"{ach.emoji} **{ach.name}** · `{player_achievement.progress}/{ach.required_count}`\n-# {status}")
+        lines.append(
+            f"{ach.emoji} **{ach.name}** · `{format_achievement_progress(player_achievement, ach)}`\n-# {status}"
+        )
 
     stats = await get_or_create_stats(player)
     subtitle = (

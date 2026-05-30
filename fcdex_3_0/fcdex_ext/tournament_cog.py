@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 import logging
-import random
 from typing import TYPE_CHECKING
 
 import discord
@@ -13,10 +12,13 @@ from django.utils import timezone
 from ballsdex.core.utils.transformers import TTLModelTransformer
 from bd_models.models import Player
 from fcdex_3_0.fcdex_ext.services import increment_stat
+from fcdex_3_0.fcdex_ext.tournament_bets import place_bet
+from fcdex_3_0.fcdex_ext.tournament_bounty_views import build_bounty_pick_view
 from fcdex_3_0.fcdex_ext.tournament_match_views import build_tournament_match_menu
 from fcdex_3_0.fcdex_ext.tournament_player_views import build_tournament_player_menu
 from fcdex_3_0.fcdex_ext.tournament_schedule import past_end_reason, start_blocked_reason
 from fcdex_3_0.fcdex_ext.tournament_views import TournamentManageView
+from fcdex_3_0.fcdex_ext.views import build_tournament_layout
 from fcdex_3_0.models import (
     Tournament,
     TournamentGroup,
@@ -59,6 +61,12 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         view = TournamentManageView(interaction.user.id)
         await interaction.response.send_message(view=view, ephemeral=True)  # pyright: ignore[reportArgumentType]
 
+    @app_commands.command(name="bounty", description="Admin bounty vault — loot pools, rules, and betting setup")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def bounty(self, interaction: discord.Interaction):
+        view = await build_bounty_pick_view(interaction.user.id)
+        await interaction.response.send_message(view=view, ephemeral=True)  # pyright: ignore[reportArgumentType]
+
     @app_commands.command(name="view", description="Tournament hub — overview, standings, bracket, and join")
     async def view(self, interaction: discord.Interaction, tournament: TournamentTransform):
         layout = await build_tournament_player_menu(interaction.user.id, tournament.pk, mode="overview")
@@ -77,40 +85,46 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         layout = await build_tournament_match_menu(interaction.user.id, tournament.pk)
         await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
 
-    @app_commands.command(name="score", description="Report your match score (group stage)")
-    async def score(
+    @app_commands.command(name="rules", description="Read tournament rules and betting info")
+    async def rules(self, interaction: discord.Interaction, tournament: TournamentTransform):
+        betting = (
+            f"🎲 Betting **on** · `{tournament.min_bet:,}`–`{tournament.max_bet:,}` coins · "
+            f"**{tournament.bet_payout_multiplier}x** payout"
+            if tournament.betting_enabled
+            else "🎲 Betting **off** for this event"
+        )
+        sections = [
+            betting,
+            tournament.rules or "*No rules posted yet — admins can configure them in `/tournament bounty`.*",
+            "-# `/tournament bet` to wager · `/tournament match` to claim bounties after wins",
+        ]
+        layout = build_tournament_layout(f"📜 {tournament.name} · Rules", sections)
+        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
+
+    @app_commands.command(name="bet", description="Wager coins on who wins a tournament match")
+    async def bet(
         self,
         interaction: discord.Interaction,
         tournament: TournamentTransform,
-        points: app_commands.Range[int, -100, 100],
+        match_id: app_commands.Range[int, 1, 999_999],
+        amount: app_commands.Range[int, 1, 10_000_000],
+        participant: discord.Member,
     ):
-        if reason := past_end_reason(tournament):
-            await interaction.response.send_message(reason, ephemeral=True)
+        if not tournament.betting_enabled:
+            await interaction.response.send_message("Betting is disabled for this tournament.", ephemeral=True)
             return
-
-        if tournament.status not in (TournamentStatus.GROUP_STAGE, TournamentStatus.REGISTRATION):
-            await interaction.response.send_message(
-                "Scores can only be updated during registration or group stage.", ephemeral=True
-            )
-            return
-
-        player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
         try:
-            registration = await TournamentRegistration.objects.aget(tournament=tournament, player=player)
-        except TournamentRegistration.DoesNotExist:
-            await interaction.response.send_message("You're not registered in this tournament.", ephemeral=True)
+            match = await TournamentMatch.objects.select_related("player1", "player2").aget(
+                pk=match_id, tournament=tournament
+            )
+        except TournamentMatch.DoesNotExist:
+            await interaction.response.send_message("That match was not found in this tournament.", ephemeral=True)
             return
 
-        registration.score += points
-        if tournament.semifinal_cutoff and registration.score < tournament.semifinal_cutoff:
-            registration.semifinal_eligible = False
-        await registration.asave(update_fields=("score", "semifinal_eligible"))
-
-        await interaction.response.send_message(
-            f"Score updated! You're now at **{registration.score}** points in the "
-            f"**{registration.get_group_display()}** group."
-            + ("" if registration.semifinal_eligible else "\n-# ⚠️ Below semifinal cutoff.")
-        )
+        picked, _ = await Player.objects.aget_or_create(discord_id=participant.id)
+        bettor, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
+        ok, message = await place_bet(tournament, match, bettor, picked, amount)
+        await interaction.response.send_message(message, ephemeral=not ok)
 
 
 async def run_tournament_start(tournament: Tournament) -> str | None:
@@ -142,6 +156,13 @@ async def run_tournament_advance(tournament: Tournament) -> tuple[bool, str]:
         return False, reason
 
     if tournament.status == TournamentStatus.GROUP_STAGE:
+        pending_group = await tournament.matches.filter(round=TournamentRound.GROUP, completed=False).acount()
+        if pending_group:
+            return False, (
+                f"**{pending_group}** group-stage match(es) still open — "
+                "players must finish battles via `/tournament match` first."
+            )
+
         eliminated = 0
         for group in TournamentGroup:
             regs = [
@@ -174,45 +195,48 @@ async def run_tournament_advance(tournament: Tournament) -> tuple[bool, str]:
         return True, f"Semifinals started! **{eliminated}** players eliminated for low scores."
 
     if tournament.status == TournamentStatus.SEMIFINALS:
-        winners: list[Player] = []
-        async for match in tournament.matches.filter(round=TournamentRound.SEMIFINAL, completed=False).select_related(
-            "player1", "player2"
-        ):
-            if match.player2 is None:
-                continue
-            winner = random.choice([match.player1, match.player2])
-            match.winner = winner
-            match.completed = True
-            await match.asave(update_fields=("winner", "completed"))
-            winners.append(winner)
-
-        if len(winners) >= 2:
-            await TournamentMatch.objects.acreate(
-                tournament=tournament, round=TournamentRound.FINAL, player1=winners[0], player2=winners[1]
+        pending = await tournament.matches.filter(round=TournamentRound.SEMIFINAL, completed=False).acount()
+        if pending:
+            return False, (
+                f"**{pending}** semifinal match(es) still open — "
+                "players must finish battles via `/tournament match` first."
             )
-            tournament.status = TournamentStatus.FINALS
-            await tournament.asave(update_fields=("status",))
-            return True, "Finals match created! Bring your best teams."
-        return False, "Not enough semifinal winners to create a final."
+
+        if await tournament.matches.filter(round=TournamentRound.FINAL).aexists():
+            return False, "Grand final already exists."
+
+        winners: list[Player] = []
+        async for match in tournament.matches.filter(round=TournamentRound.SEMIFINAL, completed=True).select_related(
+            "winner"
+        ):
+            if match.winner:
+                winners.append(match.winner)
+
+        if len(winners) < 2:
+            return False, "Need at least **2** completed semifinal winners to create the grand final."
+
+        await TournamentMatch.objects.acreate(
+            tournament=tournament, round=TournamentRound.FINAL, player1=winners[0], player2=winners[1]
+        )
+        tournament.status = TournamentStatus.FINALS
+        await tournament.asave(update_fields=("status",))
+        return True, "Grand final match created! Both finalists must battle via `/tournament match`."
 
     if tournament.status == TournamentStatus.FINALS:
         final = (
-            await tournament.matches.filter(round=TournamentRound.FINAL, completed=False)
-            .select_related("player1", "player2")
+            await tournament.matches.filter(round=TournamentRound.FINAL)
+            .select_related("player1", "player2", "winner")
             .afirst()
         )
         if not final or not final.player2:
-            return False, "No pending final match found."
-
-        winner = random.choice([final.player1, final.player2])
-        final.winner = winner
-        final.completed = True
-        await final.asave(update_fields=("winner", "completed"))
+            return False, "No grand final match found."
+        if not final.completed or not final.winner:
+            return False, "The grand final must be completed via `/tournament match` before closing the tournament."
 
         tournament.status = TournamentStatus.COMPLETED
         tournament.ended_at = timezone.now()
         await tournament.asave(update_fields=("status", "ended_at"))
-        await increment_stat(winner, "tournament_wins")
-        return True, f"🏆 **{tournament.name}** complete! Winner: <@{winner.discord_id}>"
+        await increment_stat(final.winner, "tournament_wins")
+        return True, f"🏆 **{tournament.name}** complete! Winner: <@{final.winner.discord_id}>"
 
     return False, "This tournament cannot be advanced further."

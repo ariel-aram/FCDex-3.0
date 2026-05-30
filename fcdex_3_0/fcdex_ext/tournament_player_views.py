@@ -43,17 +43,28 @@ async def build_overview_sections(tournament: Tournament, viewer_id: int | None 
         except TournamentRegistration.DoesNotExist:
             your_group = "\n**Your group** · *Not registered — join from this hub*"
 
+    rules_text = (
+        (tournament.rules[:500] + "…")
+        if len(tournament.rules) > 500
+        else (tournament.rules or "*No rules posted yet.*")
+    )
     return [
         f"**Status** · {tournament.get_status_display()}\n"
         f"**Host** · <@{host_discord_id}>\n"
         f"**Registration** · {registration_note}\n"
         f"**Legacy** · {legacy_count} players · **Main** · {main_count} players\n"
         f"**Semifinal cutoff** · `{tournament.semifinal_cutoff}` pts\n"
-        f"**Match win reward** · `{tournament.match_win_reward:,}` coins"
+        f"**Betting** · {'on' if tournament.betting_enabled else 'off'}"
+        + (
+            f" · `{tournament.min_bet:,}`–`{tournament.max_bet:,}` · **{tournament.bet_payout_multiplier}x**"
+            if tournament.betting_enabled
+            else ""
+        )
         + your_group
         + ("\n" + "\n".join(schedule_lines) if schedule_lines else ""),
+        rules_text,
         tournament.description or "*No description provided.*",
-        "-# Use **Bracket** for pairings · `/tournament match` to claim wins and earn rewards",
+        "-# **Bracket** tab · `/tournament match` (**Start battle**) · `/tournament bet` · `/tournament rules`",
     ]
 
 
