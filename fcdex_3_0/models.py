@@ -156,9 +156,11 @@ class TournamentMatch(models.Model):
     round = models.CharField(max_length=12, choices=TournamentRound.choices)
     group = models.CharField(max_length=8, choices=TournamentGroup.choices, null=True, blank=True)
     player1 = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="tournament_matches_as_p1")
+    player1_id: int
     player2 = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name="tournament_matches_as_p2", null=True, blank=True
     )
+    player2_id: int | None
     winner = models.ForeignKey(Player, on_delete=models.SET_NULL, null=True, blank=True, related_name="tournament_wins")
     score1 = models.IntegerField(default=0)
     score2 = models.IntegerField(default=0)
