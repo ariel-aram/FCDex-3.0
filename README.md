@@ -31,6 +31,8 @@ Registration stays open until the host **starts group stage** in `/tournament ma
 | `/tournament bet` | Wager coins on a match participant |
 | `/tournament rules` | Read tournament rules and betting info |
 
+Use `/fcdex menu` for a single hub listing every FCDex command group.
+
 ### 🏅 Achievements
 
 Player achievements with progress tracking and claimable rewards (coins / clubballs).
@@ -41,13 +43,18 @@ Player achievements with progress tracking and claimable rewards (coins / clubba
 
 Configure achievements in the **admin panel** under FCDex 3.0.
 
-### ✨ Merge System
+### ✨ Merge forge
 
-Sacrifice two clubballs to receive a random new clubball.
+Sacrifice two clubballs to craft a new card with the **FCDex Merge** special (custom background from the extra’s merge card art). The result inherits one of your parent club types — not a random unrelated ball.
 
 | Command | Description |
 | ------- | ----------- |
-| `/merge clubs` | Merge two clubballs into a random club |
+| `/fcdex menu` | Directory of all FCDex 3.0 features |
+| `/merge menu` | Step-by-step merge forge (Components v2) |
+| `/merge clubs` | Quick merge with two chosen cards |
+| `/merge info` | How merge specials work |
+
+On install, the extra **creates or repairs** the merge special in your database and reloads the BallsDex cache automatically.
 
 ## Installation
 
@@ -59,7 +66,7 @@ Add to `config/extra.toml` in your BallsDex directory:
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.5.3"
+location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.6.0"
 path = "fcdex_3_0"
 enabled = true
 ```

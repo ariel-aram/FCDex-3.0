@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fcdex-3-0"
-version = "1.5.3"
+version = "1.6.0"
 description = "FCDex 3.0 — tournaments, battles, achievements, and merging for BallsDex V3"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -24,6 +24,9 @@ Issues = "https://github.com/ariel-aram/FCDex-3.0/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fcdex_3_0*"]
+
+[tool.setuptools.package-data]
+fcdex_3_0 = ["media/*"]
 
 [project.optional-dependencies]
 dev = [
