@@ -70,6 +70,7 @@ class TournamentAdmin(admin.ModelAdmin):
 @admin.register(TournamentRegistration)
 class TournamentRegistrationAdmin(admin.ModelAdmin):
     autocomplete_fields = ("tournament", "player")
+    search_fields = ("tournament__name", "player__discord_id", "group")
     list_display = ("tournament", "player", "group", "score", "eliminated", "semifinal_eligible")
     list_filter = ("group", "eliminated", "tournament")
 
@@ -77,6 +78,7 @@ class TournamentRegistrationAdmin(admin.ModelAdmin):
 @admin.register(TournamentMatch)
 class TournamentMatchAdmin(admin.ModelAdmin):
     autocomplete_fields = ("tournament", "player1", "player2", "winner", "verified_winner")
+    search_fields = ("id", "tournament__name", "round", "group")
     list_display = (
         "tournament",
         "round",
@@ -94,6 +96,7 @@ class TournamentMatchAdmin(admin.ModelAdmin):
 @admin.register(TournamentMatchPrize)
 class TournamentMatchPrizeAdmin(admin.ModelAdmin):
     autocomplete_fields = ("tournament", "match", "ball")
+    search_fields = ("label", "tournament__name", "match__id")
     list_display = ("tournament", "match", "round", "group", "prize_type", "coins", "label", "weight")
     list_filter = ("prize_type", "round", "group", "tournament")
 
@@ -101,6 +104,7 @@ class TournamentMatchPrizeAdmin(admin.ModelAdmin):
 @admin.register(TournamentBet)
 class TournamentBetAdmin(admin.ModelAdmin):
     autocomplete_fields = ("tournament", "match", "bettor", "picked")
+    search_fields = ("tournament__name", "match__id", "bettor__discord_id", "picked__discord_id")
     list_display = ("tournament", "match", "bettor", "picked", "amount", "payout", "resolved", "created_at")
     list_filter = ("resolved", "tournament")
 
