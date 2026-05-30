@@ -12,6 +12,7 @@ from discord.ext import commands
 from ballsdex.core.utils.buttons import ConfirmChoiceView
 from ballsdex.core.utils.transformers import BallInstanceTransform
 from bd_models.models import BallInstance, Player, balls
+from fcdex_3_0.fcdex_ext.bd_helpers import format_instance
 from fcdex_3_0.fcdex_ext.services import increment_stat
 from fcdex_3_0.models import MergeLog
 from settings.models import settings
@@ -46,6 +47,10 @@ class MergeCog(commands.GroupCog, group_name="merge"):
             )
             return
 
+        if first.deleted or second.deleted:
+            await interaction.response.send_message("One of these cards is no longer available.", ephemeral=True)
+            return
+
         if await first.is_locked() or await second.is_locked():
             await interaction.response.send_message("One of these cards is locked for a trade.", ephemeral=True)
             return
@@ -57,9 +62,11 @@ class MergeCog(commands.GroupCog, group_name="merge"):
             )
             return
 
+        first_label = await format_instance(first)
+        second_label = await format_instance(second)
         view = ConfirmChoiceView(interaction, accept_message="Merge confirmed!", cancel_message="Merge cancelled.")
         await interaction.response.send_message(
-            f"Merge `{first.short_description()}` + `{second.short_description()}` "
+            f"Merge `{first_label}` + `{second_label}` "
             f"into a **random** {settings.collectible_name}?\n"
             f"-# Both cards will be consumed.",
             view=view,
@@ -92,8 +99,9 @@ class MergeCog(commands.GroupCog, group_name="merge"):
         with ThreadPoolExecutor() as pool:
             buffer = await interaction.client.loop.run_in_executor(pool, new_instance.draw_card)
 
+        result_label = await format_instance(new_instance)
         await interaction.followup.send(
-            f"✨ Merge complete! You received `{new_instance.short_description()}` "
+            f"✨ Merge complete! You received `{result_label}` "
             f"(`{attack_bonus:+}%`/`{health_bonus:+}%`).",
             file=discord.File(buffer, "card.webp"),
         )

@@ -21,7 +21,7 @@ Legacy & Main group tournaments with registration, group stage scoring, semifina
 
 | Command | Description |
 | ------- | ----------- |
-| `/tournament create` | Create a tournament (Manage Server) |
+| `/tournament manage` | Ephemeral admin panel: create, edit, delete, announce (Manage Server) |
 | `/tournament join` | Join as Legacy or Main group |
 | `/tournament info` | Tournament details |
 | `/tournament standings` | Group leaderboards |
@@ -60,7 +60,7 @@ Add to `config/extra.toml` in your BallsDex directory:
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/TheFCProject/FCDex-3.0.git@1.0.4"
+location = "git+https://github.com/ariel-aram/FCDex-3.0.git@1.1.0"
 path = "fcdex_3_0"
 enabled = true
 ```

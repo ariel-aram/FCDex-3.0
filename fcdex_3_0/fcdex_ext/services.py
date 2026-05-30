@@ -45,9 +45,17 @@ async def check_achievements(player: Player) -> None:
             player_achievement.progress = progress
             await player_achievement.asave(update_fields=("progress",))
 
-        if progress >= achievement.required_count and not player_achievement.unlocked_at:
+        complete = progress >= achievement.required_count
+        if complete and not player_achievement.unlocked_at:
             player_achievement.unlocked_at = timezone.now()
             await player_achievement.asave(update_fields=("unlocked_at",))
+        elif not complete and player_achievement.unlocked_at and not player_achievement.claimed_at:
+            player_achievement.unlocked_at = None
+            await player_achievement.asave(update_fields=("unlocked_at",))
+
+
+def achievement_is_complete(player_achievement: PlayerAchievement, achievement: Achievement) -> bool:
+    return player_achievement.progress >= achievement.required_count
 
 
 async def claim_achievement(player: Player, achievement: Achievement) -> tuple[bool, str]:
@@ -58,8 +66,11 @@ async def claim_achievement(player: Player, achievement: Achievement) -> tuple[b
     except PlayerAchievement.DoesNotExist:
         return False, "You haven't started this achievement yet."
 
-    if not player_achievement.unlocked_at:
-        return False, "This achievement is not unlocked yet."
+    if not player_achievement.unlocked_at or not achievement_is_complete(player_achievement, achievement):
+        return False, (
+            f"This achievement is not complete yet "
+            f"({player_achievement.progress}/{achievement.required_count})."
+        )
 
     if player_achievement.claimed_at:
         return False, "You already claimed this achievement."

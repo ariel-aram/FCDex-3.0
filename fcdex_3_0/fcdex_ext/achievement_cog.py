@@ -9,7 +9,12 @@ from discord.ext import commands
 
 from ballsdex.core.utils.transformers import TTLModelTransformer
 from bd_models.models import Player
-from fcdex_3_0.fcdex_ext.services import check_achievements, claim_achievement, get_or_create_stats
+from fcdex_3_0.fcdex_ext.services import (
+    achievement_is_complete,
+    check_achievements,
+    claim_achievement,
+    get_or_create_stats,
+)
 from fcdex_3_0.fcdex_ext.views import build_achievement_layout
 from fcdex_3_0.models import Achievement, PlayerAchievement
 
@@ -75,7 +80,11 @@ class AchievementCog(commands.GroupCog, group_name="achievement"):
             status = (
                 "✅ Claimed"
                 if player_achievement.claimed_at
-                else ("🎉 Ready to claim" if player_achievement.unlocked_at else "⏳ In progress")
+                else (
+                    "🎉 Ready to claim"
+                    if achievement_is_complete(player_achievement, ach)
+                    else "⏳ In progress"
+                )
             )
             lines.append(
                 f"{ach.emoji} **{ach.name}** — {player_achievement.progress}/{ach.required_count}\n-# {status}"
@@ -85,7 +94,7 @@ class AchievementCog(commands.GroupCog, group_name="achievement"):
         header = (
             f"Stats for {target.display_name}\n"
             f"-# Battles won: {stats.battles_won} · Merges: {stats.merges_completed} · "
-            f"Tournament wins: {stats.tournament_wins}"
+            f"Tournament wins: {stats.tournament_wins} · Tournaments joined: {stats.tournament_participations}"
         )
         body = header + ("\n\n" + "\n\n".join(lines) if lines else "\n\nNo achievement progress yet.")
         layout = build_achievement_layout("📊 Achievement Progress", body)

@@ -35,9 +35,31 @@ class PlayerAchievementAdmin(admin.ModelAdmin):
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     autocomplete_fields = ("host",)
-    list_display = ("name", "status", "host", "semifinal_cutoff", "created_at")
+    list_display = (
+        "name",
+        "status",
+        "host",
+        "scheduled_start_at",
+        "scheduled_end_at",
+        "semifinal_cutoff",
+        "created_at",
+    )
     list_filter = ("status",)
     search_fields = ("name", "description")
+    readonly_fields = ("created_at",)
+    fieldsets = (
+        (None, {"fields": ("name", "description", "host", "status", "semifinal_cutoff")}),
+        (
+            "Schedule",
+            {
+                "fields": ("scheduled_start_at", "scheduled_end_at", "started_at", "ended_at", "created_at"),
+                "description": (
+                    "Scheduled dates control registration and activity windows. "
+                    "Started/ended are set automatically when hosts run /tournament start and /tournament advance."
+                ),
+            },
+        ),
+    )
 
 
 @admin.register(TournamentRegistration)

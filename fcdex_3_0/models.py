@@ -94,8 +94,26 @@ class Tournament(models.Model):
         default=0, help_text="Minimum group score required to reach semifinals. Lowest scorers are eliminated."
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    ended_at = models.DateTimeField(null=True, blank=True)
+    scheduled_start_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Planned start — registration closes after this time until /tournament start is run.",
+    )
+    scheduled_end_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Planned end — no new joins or score updates after this time.",
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual time the group stage was started via /tournament start.",
+    )
+    ended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual time the tournament was completed via /tournament advance.",
+    )
 
     class Meta:
         ordering = ("-created_at",)

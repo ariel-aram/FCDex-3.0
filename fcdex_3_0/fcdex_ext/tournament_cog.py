@@ -13,6 +13,14 @@ from django.utils import timezone
 from ballsdex.core.utils.transformers import TTLModelTransformer
 from bd_models.models import Player
 from fcdex_3_0.fcdex_ext.services import increment_stat
+from fcdex_3_0.fcdex_ext.tournament_schedule import (
+    past_end_reason,
+    registration_closed_reason,
+    registration_is_open,
+    schedule_summary_lines,
+    start_blocked_reason,
+)
+from fcdex_3_0.fcdex_ext.tournament_views import TournamentManageView
 from fcdex_3_0.fcdex_ext.views import build_tournament_layout
 from fcdex_3_0.models import (
     Tournament,
@@ -50,35 +58,11 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
     def __init__(self, bot: BallsDexBot):
         self.bot = bot
 
-    @app_commands.command(name="create", description="Create a new tournament (host/admin)")
+    @app_commands.command(name="manage", description="Admin panel: create, edit, or delete tournaments (ephemeral)")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def create(
-        self,
-        interaction: discord.Interaction,
-        name: str,
-        description: str = "",
-        semifinal_cutoff: app_commands.Range[int, 0, 9999] = 0,
-    ):
-        if await Tournament.objects.filter(name__iexact=name).aexists():
-            await interaction.response.send_message("A tournament with that name already exists.", ephemeral=True)
-            return
-
-        host, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
-        tournament = await Tournament.objects.acreate(
-            name=name, description=description, host=host, semifinal_cutoff=semifinal_cutoff
-        )
-
-        layout = build_tournament_layout(
-            f"🏟️ {tournament.name}",
-            [
-                f"**Status:** Registration open\n"
-                f"**Host:** {interaction.user.mention}\n"
-                f"**Semifinal cutoff:** {semifinal_cutoff} points\n\n"
-                f"{description or 'No description provided.'}\n\n"
-                f"-# Join with `/tournament join` · Legacy or Main group"
-            ],
-        )
-        await interaction.response.send_message(view=layout)
+    async def manage(self, interaction: discord.Interaction):
+        view = TournamentManageView(interaction.user.id)
+        await interaction.response.send_message(view=view, ephemeral=True)  # pyright: ignore[reportArgumentType]
 
     @app_commands.command(name="join", description="Join an open tournament")
     @app_commands.choices(
@@ -87,8 +71,8 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
     async def join(
         self, interaction: discord.Interaction, tournament: TournamentTransform, group: app_commands.Choice[str]
     ):
-        if tournament.status != TournamentStatus.REGISTRATION:
-            await interaction.response.send_message("Registration is closed for this tournament.", ephemeral=True)
+        if reason := registration_closed_reason(tournament):
+            await interaction.response.send_message(reason, ephemeral=True)
             return
 
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
@@ -112,12 +96,20 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         legacy_count = await tournament.registrations.filter(group=TournamentGroup.LEGACY).acount()
         main_count = await tournament.registrations.filter(group=TournamentGroup.MAIN).acount()
 
+        schedule_lines = schedule_summary_lines(tournament)
+        registration_note = (
+            "Registration open"
+            if registration_is_open(tournament)
+            else (registration_closed_reason(tournament) or "Registration closed")
+        )
         sections = [
             f"**Status:** {tournament.get_status_display()}\n"
             f"**Host:** <@{host_discord_id}>\n"
+            f"**Registration:** {registration_note}\n"
             f"**Legacy group:** {legacy_count} players\n"
             f"**Main group:** {main_count} players\n"
-            f"**Semifinal cutoff:** {tournament.semifinal_cutoff} pts",
+            f"**Semifinal cutoff:** {tournament.semifinal_cutoff} pts"
+            + ("\n" + "\n".join(schedule_lines) if schedule_lines else ""),
             tournament.description or "No description.",
         ]
         layout = build_tournament_layout(f"🏟️ {tournament.name}", sections)
@@ -130,6 +122,10 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         tournament: TournamentTransform,
         points: app_commands.Range[int, -100, 100],
     ):
+        if reason := past_end_reason(tournament):
+            await interaction.response.send_message(reason, ephemeral=True)
+            return
+
         if tournament.status not in (TournamentStatus.GROUP_STAGE, TournamentStatus.REGISTRATION):
             await interaction.response.send_message(
                 "Scores can only be updated during registration or group stage.", ephemeral=True
@@ -150,7 +146,7 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
 
         await interaction.response.send_message(
             f"Score updated! You're now at **{registration.score}** points in the "
-            f"**{registration.group}** group."
+            f"**{registration.get_group_display()}** group."
             + ("" if registration.semifinal_eligible else "\n-# ⚠️ Below semifinal cutoff."),
             ephemeral=True,
         )
@@ -182,6 +178,10 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
             await interaction.response.send_message("This tournament has already started.", ephemeral=True)
             return
 
+        if reason := start_blocked_reason(tournament):
+            await interaction.response.send_message(reason, ephemeral=True)
+            return
+
         count = await tournament.registrations.acount()
         if count < 2:
             await interaction.response.send_message("Need at least 2 players to start.", ephemeral=True)
@@ -208,6 +208,10 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
     @app_commands.command(name="advance", description="Advance to semifinals/finals (host/admin)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def advance(self, interaction: discord.Interaction, tournament: TournamentTransform):
+        if reason := past_end_reason(tournament):
+            await interaction.response.send_message(reason, ephemeral=True)
+            return
+
         if tournament.status == TournamentStatus.GROUP_STAGE:
             eliminated = 0
             for group in TournamentGroup:
